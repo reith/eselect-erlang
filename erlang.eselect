@@ -1,0 +1,97 @@
+# -*-eselect-*-  vim: ft=eselect ts=4 sw=4 noet
+# This software is public domain
+
+DESCRIPTION="Manage Erlang/OTP installations"
+MAINTAINER="ameretat.reith@gmail.com"
+VERSION=20170610
+
+ERL_BASE_PUB_FILES="erl erlc epmd run_erl to_erl dialyzer typer escript ct_run"
+
+find_targets() {
+	ls -1 ${EROOT}/usr/lib/erlang | sed -ne '/^[0-9]*$/p'
+}
+
+### set action ###
+
+describe_set() {
+	echo "Select an installation as default"
+}
+
+describe_set_parameters() {
+	echo "[binaries...] <target>"
+}
+
+do_set() {
+	local bins=
+	local skip_no_bin=
+	local target=
+
+	[[ -z "$1" ]] && die -q "No installation provided"
+
+	if [[ -z "$2" ]]; then
+		bins="$ERL_BASE_PUB_FILES"
+		skip_no_bin=1
+	fi
+
+	while [[ -n "$1" ]]; do
+		[[ -n "$target" ]] && bins+=" $target"
+		target=$1
+		shift
+	done
+
+	[[ -d "${EROOT}/usr/lib/erlang/${target}" ]] || die "Target not found"
+
+	for b in $bins; do
+		if [[ -f "${EROOT}/usr/bin/${b}${target}" ]]; then
+			echo "${EROOT}/usr/bin/${b}${target}" "${EROOT}/usr/bin/$b" 
+		elif [[ -z "$skip_no_bin" ]]; then
+			die -q "Erlang ${target} didn't provide $b or It's deleted"
+		fi
+	done >"${EROOT}/etc/eselect/erlang/.newset"
+
+	[[ -s "${EROOT}/etc/eselect/erlang/aliases" ]] && while read tb b; do
+		rm -v $b
+	done <"${EROOT}/etc/eselect/erlang/aliases"
+
+	while read tb b; do
+		ln -sv "$tb" "$b"
+	done <"${EROOT}/etc/eselect/erlang/.newset"
+
+	echo $target > "${EROOT}/etc/eselect/erlang/active"
+	
+	mv "${EROOT}/etc/eselect/erlang/.newset" "${EROOT}/etc/eselect/erlang/aliases"
+}
+
+### show action ###
+
+describe_show() {
+	echo "Show selected installation"
+}
+
+do_show() {
+	if [[ -s "${EROOT}/etc/eselect/erlang/active" ]]; then
+		cat "${EROOT}/etc/eselect/erlang/active"
+	fi
+}
+
+### list action ###
+
+describe_list() {
+	echo "Show available installations"
+}
+
+do_list() {
+	[[ -z "${@}" ]] || die -q "Too many parameters"
+
+	local targets
+	targets=( $(find_targets) )
+
+	for (( i=0; i<${#targets[@]}; i++ )); do
+		if [[ "$(cat ${EROOT}/etc/eselect/erlang/active)" == "${targets[i]}" ]]; then
+			targets[i]=$(highlight_marker "${targets[i]}")
+		fi
+	done
+
+	write_list_start "Installed (major) versions"
+	write_numbered_list -m '(none found)' "${targets[@]}"
+}
