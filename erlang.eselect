@@ -4,11 +4,12 @@
 DESCRIPTION="Manage Erlang/OTP installations"
 MAINTAINER="ameretat.reith@gmail.com"
 VERSION=20170610
+LIBDIR=${EROOT}/usr/lib64
 
 ERL_BASE_PUB_FILES="erl erlc epmd run_erl to_erl dialyzer typer escript ct_run"
 
 find_targets() {
-	ls -1 ${EROOT}/usr/lib/erlang | sed -ne '/^[0-9]*$/p'
+	ls -1 ${LIBDIR}/erlang | sed -ne '/^[0-9]*$/p'
 }
 
 ### set action ###
@@ -39,7 +40,7 @@ do_set() {
 		shift
 	done
 
-	[[ -d "${EROOT}/usr/lib/erlang/${target}" ]] || die "Target not found"
+	[[ -d "${LIBDIR}/erlang/${target}" ]] || die "Target not found"
 
 	for b in $bins; do
 		if [[ -f "${EROOT}/usr/bin/${b}${target}" ]]; then
